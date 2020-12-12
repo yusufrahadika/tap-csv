@@ -43,6 +43,7 @@ Where `config.json` contains an array called `files` that consists of dictionary
 * `entity`: The entity name to be passed to singer (i.e. the table)
 * `path`: Local path to the file to be ingested. Note that this may be a directory, in which case all files in that directory and any of its subdirectories will be recursively processed
 * `keys`: The names of the columns that constitute the unique keys for that entity
+* `columns`: Define the column data type (optional)
 
 Example:
 
@@ -55,7 +56,11 @@ Example:
 					},
 					{	"entity" : "opportunities",
 						"file" : "/path/to/opportunities.csv",
-						"keys" : ["Id"]
+						"keys" : ["Id"],
+						"columns": {
+							"Id": "integer",
+							"name": "string"
+						}
 					}
 				]
 }
