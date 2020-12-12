@@ -15,22 +15,23 @@ CONFIG = {}
 
 logger = singer.get_logger()
 
-def write_schema_from_header(entity, header, keys):
+def write_schema_from_header(entity, header, keys, columns):
     schema =    {
                     "type": "object",
                     "properties": {}
                 }
     header_map = []
+    header_type = []
     for column in header:
         #for now everything is a string; ideas for later:
         #1. intelligently detect data types based on a sampling of entries from the raw data
-        #2. by default everything is a string, but allow entries in config.json to hard-type columns by name
-        schema["properties"][column] = {"type": "string" } 
+        schema["properties"][column] = { "type": columns.get(column, "string") }
         header_map.append(column)
+        header_type.append(columns.get(column, "string"))
 
     singer.write_schema(entity, schema, keys) 
 
-    return header_map
+    return header_map, header_type
 
 def process_file(fileInfo):
     #determines if file in question is a file or directory and processes accordingly
@@ -52,18 +53,26 @@ def sync_file(fileInfo):
         logger.info("Skipping non-csv file '" + fileInfo["file"] + "'")
         return
 
+    #only works for int, float, str
+    #you can define more below
+    parser = {
+        "integer": int,
+        "number": float,
+        "string": str,
+    }
+
     logger.info("Syncing entity '" + fileInfo["entity"] + "' from file: '" + fileInfo["file"] + "'")
     with open(fileInfo["file"], "r") as f:
         needsHeader = True
         reader = csv.reader(f)
         for row in reader:
             if(needsHeader):
-                header_map = write_schema_from_header(fileInfo["entity"], row, fileInfo["keys"])
+                header_map, header_type = write_schema_from_header(fileInfo["entity"], row, fileInfo["keys"], fileInfo.get("columns", {}))
                 needsHeader = False
             else:
                 record = {}
                 for index, column in enumerate(row):
-                    record[header_map[index]] = column
+                    record[header_map[index]] = parser[header_type[index]](column)
                 if len(record) > 0: #skip empty lines
                     singer.write_record(fileInfo["entity"], record)
 
